@@ -44,6 +44,8 @@ class MaximAPI:
 			raise MaximException("Could not enter passthru mode.")
 		
 	def GetVersion(self):
+		"""Returns a unicode string of the current firmware version running on the board
+		"""
 		A = self.a
 		INS = 0x6F
 		P1 = 0x00
@@ -51,8 +53,6 @@ class MaximAPI:
 		L = 0x00
 		
 		APDU = self._create_apdu(A, INS, P1, P2, L)
-		
-		
 		data, sw1, sw2 = self._send_apdu( APDU )
 		
 		if sw1 == 0x90 and sw2 == 0x00:
@@ -61,9 +61,6 @@ class MaximAPI:
 		else:
 			raise MaximException("Unsuccessful. Returned %s %s." % (toHexString([sw1]), toHexString([sw2])))
 			
-		
-		
-		
 	def GetInterfaceMap(self, interface=0):
 		"""Returns a list of currently attached interfaces.
 		
