@@ -14,4 +14,20 @@ class MaximAPI:
 		self.a = a
 		
 	def GetVersion(self):
-		self.foo = bar
+		INS = 0x6F
+		P1 = 0x00
+		P2 = 0x00
+		L = 0x00
+		
+	def GetInterfaceMap(self, interface=0):
+		"""Returns a list of currently attached interfaces.
+		
+		Key arguments:
+		interface -- the interface class to be returned (default 0 - all)
+		"""
+		INS = 0x50
+		P2 = 0x00
+		L = 0x00
+		
+		if interface in range(0,8):
+			P1 = 0x00
