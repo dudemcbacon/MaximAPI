@@ -37,12 +37,12 @@ class MaximAPI:
 
 		raw_input("Please enter passthru mode on Kremlin I. Press any key to continue.")
 
-		data, sw1, sw2 = self._send_apdu( PASSTHRU )
+		#data, sw1, sw2 = self._send_apdu( PASSTHRU )
 
-		if sw1 == 0x00 and sw2 == 0x04:
-			pass
-		else:
-			raise MaximException("Could not enter passthru mode.")
+		#if sw1 == 0x00 and sw2 == 0x04:
+		#	pass
+		#else:
+		#	raise MaximException("Could not enter passthru mode.")
 		
 	def GetVersion(self):
 		"""Returns a unicode string of the current firmware version running on the board
@@ -109,7 +109,7 @@ class MaximAPI:
 		
 		Key arguments:
 		interface -- the specified interface (int)
-		timeout -- 10ms (0b1-------), 1s interval (0b0-------), wait until reset (0xFF)
+		timeout -- 1ms (0b1-------), 10ms interval (0b0-------), wait until reset (0xFF)
 		expected_data (optional) -- size of the expected response data
 		"""
 		A = self.a
@@ -126,7 +126,7 @@ class MaximAPI:
 			raise MaximException("Timeout value must be one byte.")
 		
 		Le = self._format_byte_length(expected_data)
-		
+
 		#TODO: add expected data length to APDU
 		APDU = self._create_apdu(A, INS, P1, P2)
 		data, sw1, sw2 = self._send_apdu( APDU )
@@ -332,7 +332,7 @@ class MaximAPI:
 		data, sw1, sw2 = self._send_apdu( APDU )
 		
 		if sw1 == 0x90 and sw2 == 0x00:
-			return True
+			return data
 		else:
 			self._decode_error_response(sw1, sw2)
 		
@@ -354,6 +354,8 @@ class MaximAPI:
 		if self.debug == True:
 			print("--> {0}".format(toHexString(apdu)))
 		data, sw1, sw2 = self.connection.transmit(apdu)
+		self.last_sent(apdu)
+		self.last_received(data + [sw1, sw2])
 		if self.debug == True:
 			print("<-- {0}".format(toHexString(data)))
 			print("<-- {0}".format(toHexString([sw1, sw2])))
