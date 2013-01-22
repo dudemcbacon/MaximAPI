@@ -1,3 +1,10 @@
+# Test things to ignore
+MagStripe.py
+example.py
+registers.py
+test.html
+
+
 *.py[cod]
 
 # C extensions
