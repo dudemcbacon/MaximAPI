@@ -14,6 +14,8 @@ class MaximAPI:
 			self.reader = reader
 		self.a = a
 		self.debug = debug
+		self.last_sent = ''
+		self.last_received = ''
 	
 	def Connect(self):
 		SELECT = [0x00, 0xA4, 0x04, 0x00, 0x06]
@@ -35,7 +37,7 @@ class MaximAPI:
 		else:
 			raise MaximException("Could not select Kremlin app.")
 
-		raw_input("Please enter passthru mode on Kremlin I. Press any key to continue.")
+		#raw_input("Please enter passthru mode on Kremlin I. Press any key to continue.")
 
 		#data, sw1, sw2 = self._send_apdu( PASSTHRU )
 
@@ -120,7 +122,7 @@ class MaximAPI:
 		else:
 			raise MaximException("Invalid interface.")
 			
-		if timeout < 255:
+		if timeout <= 255:
 			P2 = timeout
 		else:
 			raise MaximException("Timeout value must be one byte.")
@@ -216,12 +218,13 @@ class MaximAPI:
 		if byte_array == []:
 			raise MaximException("byte_array contains no data.")
 		
-		if len(byte_array) < 256:
-			L = array('b', [len(byte_array)])
-		elif len(byte_array) > 256 and len(byte_array) < 65536:
-			L = array('b', [0x00, len(byte_array)])
+		L = self._format_byte_length(len(byte_array))
+		#if len(byte_array) < 256:
+		#	L = array('b', [len(byte_array)])
+		#elif len(byte_array) > 256 and len(byte_array) < 65536:
+		#	L = array('b', [0x00, len(byte_array)])
 
-		APDU = self._create_apdu(A, INS, P1, P2, *L.tolist() + byte_array.tolist())
+		APDU = self._create_apdu(A, INS, P1, P2, *L + byte_array)
 		data, sw1, sw2 = self._send_apdu( APDU )
 		
 		if sw1 == 0x90 and sw2 == 0x00:
@@ -237,7 +240,7 @@ class MaximAPI:
 		"""
 		A = self.a
 		INS = 0x5A
-		
+		P2 = req
 		if interface in range(0,8):
 			P1 = interface
 		else:
@@ -318,17 +321,11 @@ class MaximAPI:
 		else:
 			raise MaximException("Invalid interface.")
 		
-		if len(command) < 256:
-			Lc = array('b', [len(command)])
-		elif len(command) > 256 and len(command) < 65536:
-			Lc = array('b', [0x00, len(command)])		
+		Lc = self._format_byte_length(len(command))		
 			
-		if len(expected_data) < 256:
-			Le = array('b', [len(expected_data)])
-		elif len(expected_data) > 256 and len(expected_data) < 65536:
-			Le = array('b', [0x00, len(expected_data)])	
+		Le = self._format_byte_length(expected_data)
 		
-		APDU = self._create_apdu(A, INS, P1, P2, *Lc.tolist + command + Le.tolist)
+		APDU = self._create_apdu(A, INS, P1, P2, *Lc + command + Le)
 		data, sw1, sw2 = self._send_apdu( APDU )
 		
 		if sw1 == 0x90 and sw2 == 0x00:
@@ -354,8 +351,8 @@ class MaximAPI:
 		if self.debug == True:
 			print("--> {0}".format(toHexString(apdu)))
 		data, sw1, sw2 = self.connection.transmit(apdu)
-		self.last_sent(apdu)
-		self.last_received(data + [sw1, sw2])
+		self.last_sent = apdu
+		self.last_received = data + [sw1, sw2]
 		if self.debug == True:
 			print("<-- {0}".format(toHexString(data)))
 			print("<-- {0}".format(toHexString([sw1, sw2])))
