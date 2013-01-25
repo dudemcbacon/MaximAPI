@@ -159,8 +159,9 @@ class MaximAPI:
 		else:
 			raise MaximException("Timeout value must be one byte.")
 		
-		Lc = self._format_byte_length(len(data))
+		print(len(data))
 		
+		Lc = self._format_byte_length(len(data))
 		Le = self._format_byte_length(expected_bytes)
 		
 		APDU = self._create_apdu(A, INS, P1, P2, *Lc + data + Le)
