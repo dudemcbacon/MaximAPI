@@ -4,6 +4,8 @@ from smartcard.util import toHexString, toBytes
 from array import array
 import maxim, unittest, time, sys, StringIO, HTMLTestRunner, logging
 from maxim import MaximException
+from smartcard.CardType import ATRCardType
+from smartcard.CardRequest import CardRequest
 
 #_SELECT_PSE = [0x00, 0xA4, 0x04, 0x00, 0x0E, 0x31, 0x50, 0x41, 0x59, 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30, 0x31]
 
@@ -84,6 +86,8 @@ class ResetTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x90, 0x00])
 		
 	def testSoftResetEMVReader(self):
+		logging.info("Please insert EMV card for soft Reset().")
+		raw_input()
 		self.max.Reset(2, 1)
 		apdu = self.max.last_received
 		self.assertEquals(apdu[len(apdu)-2:], [0x90, 0x00])
@@ -114,7 +118,6 @@ class WriteTests(unittest.TestCase):
 		r = readers()
 		self.max = maxim.MaximAPI(r[0])
 		self.max.Connect()
-		self.UnknownInterfaces = [3, 7]
 		
 	def testWriteEMV(self):
 		self.assertTrue(self.max.Write(_EMV_INTERFACE, [0x00, 0x00]))
@@ -126,12 +129,12 @@ class WriteTests(unittest.TestCase):
 		self.assertTrue(self.max.Write(_LED_INTERFACE, [0b11111111]))
 	
 	def testWriteToReadOnlyMagStripe(self):
-		self.assertRaises(MaximException, self.max.Write, (_MAG_INTERFACE, [0x00]))
+		self.assertRaises(MaximException, self.max.Write, _MAG_INTERFACE, [0x00])
 		apdu = self.max.last_received
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, _MAG_INTERFACE])
 		
 	def testWriteToReadOnlyKeypad(self):
-		self.assertRaises(MaximException, self.max.Write, (_LED_INTERFACE, [0x00]))
+		self.assertRaises(MaximException, self.max.Write, _LED_INTERFACE, [0x00])
 		apdu = self.max.last_received
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, _LED_INTERFACE])
 		
@@ -141,10 +144,9 @@ class WriteTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, 0x02])
 		
 	def testWriteToUnknown(self):
-		for i in self.UnknownInterfaces:
-			self.assertRaises(MaximException, self.max.Write, (i, [0x00]))
-			apdu = self.max.last_received
-			self.assertEquals(apdu[len(apdu)-2:], [0x64, i])
+		self.assertRaises(MaximException, self.max.Write, _UNK_INTERFACE, [0x00])
+		apdu = self.max.last_received
+		self.assertEquals(apdu[len(apdu)-2:], [0x6A, _UNK_INTERFACE])
 		
 	def testMalformedCommand(self):
 		apdu = [0xA0, 0x56, 0x01, 0x43, 0x32, 0x35, 0x23, 0x23, 0x23]
@@ -197,7 +199,7 @@ class ReadTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x90, 0x00])
 		
 	def testReadWriteOnly(self):
-		self.max.Read(_LCD_INTERFACE, self.timeout)
+		self.assertRaises(MaximException, self.max.Read, _LCD_INTERFACE, self.timeout)
 		apdu = self.max.last_received
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, 0x00])
 		
@@ -207,23 +209,24 @@ class ReadTests(unittest.TestCase):
 	def testReadTimeoutMS(self):
 		timeout = 0b1010 # 10ms
 		t1 = time.time()
-		self.max.Read(_LED_INTERFACE, timeout, [], 0)
+		self.assertRaises(MaximException, self.max.Read, _MAG_INTERFACE, timeout)
 		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
+		actual_time = (t2-t1)*100
+		print actual_time
+		self.assertTrue(actual_time < timeout+(0.25*actual_time) and actual_time > timeout-(0.25*actual_time)) 
 		
 	def testReadTimeoutS(self):
-		timeout = 0b1010 # 10ms
+		timeout = 0b10000011 # 3ms
 		t1 = time.time()
-		self.max.Transact(_LED_INTERFACE, timeout, [], 0)
+		self.assertRaises(MaximException, self.max.Read, _MAG_INTERFACE, timeout)
 		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
-		
-	def testReadTimeoutForever(self):
-		timeout = 0b1010 # 10ms
-		t1 = time.time()
-		self.max.Transact(_LED_INTERFACE, timeout, [], 0)
-		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
+		actual_time = (t2-t1)
+		hi = (timeout-0b10000000)+(0.25*(timeout-0b10000000))
+		low = (timeout-0b10000000)-(0.25*(timeout-0b10000000))
+		print("Lo Threshold: {0}".format(low))
+		print("Hi Threshold: {0}".format(hi))
+		print("Actual Time: {0})".format(actual_time))
+		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testReadUnknownInterface(self):
 		self.assertRaises(MaximException, self.max.Read, _UNK_INTERFACE, self.timeout)
@@ -242,7 +245,10 @@ class TransactTests(unittest.TestCase):
 		self.max = maxim.MaximAPI(r[0])
 		self.max.Connect()
 		self.UnknownInterfaces = [3, 7]
-		self.timeout = 0b10000111 # 7 seconds
+		self.timeout = 0b00000111 # 7 seconds
+		self.EMV_SELECT_COMMAND = [0x00, 0xA4, 0x04, 0x00, 0x0E, 0x31, 0x50, 0x41, 0x59, 
+															 0x2E, 0x53, 0x59, 0x53, 0x2E, 0x44, 0x44, 0x46, 0x30,
+															 0x31, 0x00]
 		
 	def testTransactMag(self):
 		self.assertRaises(MaximException, self.max.Transact, _MAG_INTERFACE, self.timeout, [], 0)
@@ -250,40 +256,50 @@ class TransactTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, 0x01])
 	
 	def testTransactEMV(self):
-		self.max.Transact(_EMV_INTERFACE, self.timeout, [], 0)
+		logging.info("Insert EMV card to being Transact() EMV test.")
+		raw_input()
+		self.max.Transact(_EMV_INTERFACE, 0b1100100, self.EMV_SELECT_COMMAND, 0)
 		
 	def testTransactNFC(self):
 		self.assertTrue(False)
 		
 	def testTransactLCD(self):
-		self.max.Transact(_LCD_INTERFACE, self.timeout, [], 0)
+		self.assertRaises(MaximException, self.max.Transact, _LCD_INTERFACE, self.timeout, self.EMV_SELECT_COMMAND, 0)
+		apdu = self.max.last_received
+		self.assertEquals(apdu[len(apdu)-2:], [0x64, 0x00])
 	
 	def testTransactOnDisabled(self):
 		self.assertTrue(False)
-	
-	def testTransactOnWriteOnly(self):
-		pass
 		
 	def testTransactTimeoutMS(self):
+		logging.info("Remove EMV card to being Transact() timeout test.")
+		raw_input()
 		timeout = 0b1010 # 10ms
 		t1 = time.time()
-		self.max.Transact(_LCD_INTERFACE, timeout, [], 0)
+		self.assertRaises(MaximException, self.max.Transact, _EMV_INTERFACE, timeout, self.EMV_SELECT_COMMAND, 0)
 		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
+		actual_time = (t2-t1)*100
+		hi = timeout+(0.25*timeout)
+		low = timeout-(0.25*timeout)
+		print("Lo Threshold: {0}".format(low))
+		print("Hi Threshold: {0}".format(hi))
+		print("Actual Time: {0})".format(actual_time))
+		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testTransactTimeoutSec(self):
-		timeout = 0b10001010 # 10s
+		logging.info("Remove EMV card to being Transact() timeout test.")
+		raw_input()
+		timeout = 0b10000011 # 3ms
 		t1 = time.time()
-		self.max.Transact(_LCD_INTERFACE, timeout, [], 0)
+		self.assertRaises(MaximException, self.max.Transact, _EMV_INTERFACE, timeout, self.EMV_SELECT_COMMAND, 0)
 		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
-		
-	def testTransactTimeoutFF(self):
-		timeout = 0xFF # Forever
-		t1 = time.time()
-		self.max.Transact(_LCD_INTERFACE, timeout, [], 0)
-		t2 = time.time()
-		self.assertFalse(False) # TODO: Fix when timeout works correctly.
+		actual_time = (t2-t1)
+		hi = (timeout-0b10000000)+(0.25*(timeout-0b10000000))
+		low = (timeout-0b10000000)-(0.25*(timeout-0b10000000))
+		print("Lo Threshold: {0}".format(low))
+		print("Hi Threshold: {0}".format(hi))
+		print("Actual Time: {0})".format(actual_time))
+		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testTransactUnknownInterface(self):
 		self.assertRaises(MaximException, self.max.Transact, _UNK_INTERFACE, self.timeout, [], 0)
@@ -415,31 +431,30 @@ class WaitForCardTests(unittest.TestCase):
 		self.assertTrue(int in list)
 		
 	def testWaitForTimeoutMS(self):
-		timeout = 0b1010 # 100ms timeout
-		logging.info("Remove any card and press Enter to start 100ms Timeout test.")
-		raw_input()
+		timeout = 0b1010 # 10ms
 		t1 = time.time()
-		self.assertRaises(MaximException, self.max.WaitForCard, _ANY_INTERFACE, timeout)
+		self.assertRaises(MaximException, self.max.WaitForCard, _MAG_INTERFACE, timeout)
 		t2 = time.time()
-		self.assertFalse((t2-t1)>100)
+		actual_time = (t2-t1)*100
+		hi = timeout+(0.25*timeout)
+		low = timeout-(0.25*timeout)
+		print("Lo Threshold: {0}".format(low))
+		print("Hi Threshold: {0}".format(hi))
+		print("Actual Time: {0})".format(actual_time))
+		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testWaitForTimeoutSec(self):
-		timeout = 0b10001010 # 10s timeout
-		logging.info("Remove any card and press Enter to start 10s Timeout test.")
-		raw_input()
+		timeout = 0b10000011 # 3ms
 		t1 = time.time()
-		self.assertRaises(MaximException, self.max.WaitForCard, _ANY_INTERFACE, timeout)
+		self.assertRaises(MaximException, self.max.WaitForCard, _MAG_INTERFACE, timeout)
 		t2 = time.time()
-		self.assertFalse((t2-t1)>100)
-		
-	def testWaitForTimeoutFF(self):
-		timeout = 0xFF # 10s timeout
-		logging.info("Remove any card and press Enter to start 10s Timeout test.")
-		raw_input()
-		t1 = time.time()
-		self.assertRaises(MaximException, self.max.WaitForCard, _ANY_INTERFACE, timeout)
-		t2 = time.time()
-		self.assertFalse((t2-t1)>100)
+		actual_time = (t2-t1)
+		hi = (timeout-0b10000000)+(0.25*(timeout-0b10000000))
+		low = (timeout-0b10000000)-(0.25*(timeout-0b10000000))
+		print("Lo Threshold: {0}".format(low))
+		print("Hi Threshold: {0}".format(hi))
+		print("Actual Time: {0})".format(actual_time))
+		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testWaitForNonCardReadingLCD(self):
 		self.assertRaises(MaximException, self.max.WaitForCard, _LCD_INTERFACE, self.timeout)
@@ -471,79 +486,94 @@ class KeypadTests(unittest.TestCase):
 		self.max = maxim.MaximAPI(r[0])
 		self.max.Connect()
 		self.timeout = 0b10000111
-		s
+		
 	def testKeyOne(self):
-		print("Press the 1 key.")
+		logging.info("Press the 1 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 1)
 		
 	def testKeyTwo(self):
-		print("Press the 2 key.")
+		logging.info("Press the 2 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 2)
 		
 	def testKeyThree(self):
-		print("Press the 3 key.")
+		logging.info("Press the 3 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 3)
 	
 	def testKeyFour(self):
-		print("Press the 4 key.")
+		logging.info("Press the 4 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 4)
 		
 	def testKeyFive(self):
-		print("Press the 5 key.")
+		logging.info("Press the 5 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 5)
 		
 	def testKeySix(self):
-		print("Press the 6 key.")
+		logging.info("Press the 6 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 6)
 		
 	def testKeySeven(self):
-		print("Press the 7 key.")
+		logging.info("Press the 7 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 7)
 		
 	def testKeyEight(self):
-		print("Press the 8 key.")
+		logging.info("Press the 8 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 8)
 		
 	def testKeyNine(self):
-		print("Press the 9 key.")
+		logging.info("Press the 9 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 9)
 		
 	def testKeyZero(self):
-		print("Press the 0 key.")
+		logging.info("Press the 0 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0)
 		
 	def testKeyEnter(self):
-		print("Press the Enter key.")
+		logging.info("Press the Enter key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x0D)
 		
 	def testKeyBackspace(self):
-		print("Press the Backspace key.")
+		logging.info("Press the Backspace key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x08)
 		
 	def testKeyCancel(self):
-		print("Press the Cancel key.")
+		logging.info("Press the Cancel key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x18)
 		
 	def testKeyFunction1(self):
-		print("Press the F1 key.")
+		logging.info("Press the F1 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x11)
 		
 	def testKeyFunction2(self):
-		print("Press the F2 key.")
+		logging.info("Press the F2 key.")
+		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x12)
 		
@@ -553,33 +583,32 @@ class LEDTests(unittest.TestCase):
 		self.max = maxim.MaximAPI(r[0])
 		self.max.Connect()
 		
-	def testLED1(self):
-		self.max.write()
-		i = logging.info("Did the green LED light up? (y/n)")
+	def testBanksOff(self):
+		self.max.Write()
+		logging.info("Did the green LED light up? (y/n)")
 		raw_input()
 		self.assertEquals(i, 'y')
+		
+	def testBanksGreen(self):
+		pass
+		
+	def testBanksRed(self):
+		pass
+		
+	def test0Green3Red(self):
+		pass
+	
+	def testBanksYellow(self):
+		pass
+		
+	def test01Green23Red(self):
+		pass
 		
 	def testLED2(self):
-		self.max.write()
-		i = logging.info("Did the red LED light up? (y/n)")
+		self.max.Write()
+		logging.info("Did the red LED light up? (y/n)")
 		raw_input()
 		self.assertEquals(i, 'y')
-		
-class CardReaderTests(unittest.TestCase):
-	def setUp(self):
-		r = readers()
-		self.max = maxim.MaximAPI(r[0])
-		self.max.Connect()
-		self.timeout = 0b10000111
-		
-	def testMagStripe(self):
-		pass
-		
-	def testContactCard(self):
-		pass
-		
-	def testContactlessCard(self):
-		pass
 
 class DisplayTests(unittest.TestCase):
 	def setUp(self):
@@ -599,20 +628,6 @@ class BugTests(unittest.TestCase):
 		self.max = maxim.MaximAPI(r[0])
 		self.max.Connect()
 		self.timeout = 0xFF
-		
-	def testM4(self):
-		self.max.GetInterfaceMap(01)
-		self.assertEquals(self.max.last_received[0], '0xC0')
-		
-	def testM5(self):
-		r = self.max.GetInterfaceMap(07)
-		apdu = self.max.last_received
-		self.assertEquals(apdu[len(apdu)-2:], [0x6A, 0x07])
-		
-	def testM6(self):
-		self.max.Read(01, self.timeout, 00)
-		apdu = self.max.last_received
-		self.assertEquals(apdu[0:4], [0xE1, 0x5D, 0x04, 0x5B])
 		
 	def testM7(self):
 		self.max.Write(04, [0x00, 0x00])
@@ -636,7 +651,10 @@ class Test_HTMLTestRunner(unittest.TestCase):
 			unittest.defaultTestLoader.loadTestsFromTestCase(WriteTests),
 			unittest.defaultTestLoader.loadTestsFromTestCase(TransactTests),
 			unittest.defaultTestLoader.loadTestsFromTestCase(EnableTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(WaitForCardTests)
+			unittest.defaultTestLoader.loadTestsFromTestCase(WaitForCardTests),
+			unittest.defaultTestLoader.loadTestsFromTestCase(LEDTests),
+			unittest.defaultTestLoader.loadTestsFromTestCase(KeypadTests)
+			#unittest.defaultTestLoader.loadTestsFromTestCase(BugTests)
 			])
 			
 		buf = StringIO.StringIO()	
