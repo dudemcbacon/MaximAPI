@@ -134,9 +134,9 @@ class WriteTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, _MAG_INTERFACE])
 		
 	def testWriteToReadOnlyKeypad(self):
-		self.assertRaises(MaximException, self.max.Write, _LED_INTERFACE, [0x00])
+		self.assertRaises(MaximException, self.max.Write, _PIN_INTERFACE, [0x00])
 		apdu = self.max.last_received
-		self.assertEquals(apdu[len(apdu)-2:], [0x64, _LED_INTERFACE])
+		self.assertEquals(apdu[len(apdu)-2:], [0x64, _PIN_INTERFACE])
 		
 	def testWriteToDisabled(self):
 		self.assertFalse(self.max.Enable(_LCD_INTERFACE, 0x00))
@@ -256,7 +256,7 @@ class TransactTests(unittest.TestCase):
 		self.assertEquals(apdu[len(apdu)-2:], [0x64, 0x01])
 	
 	def testTransactEMV(self):
-		logging.info("Insert EMV card to being Transact() EMV test.")
+		logging.info("Insert EMV card to begin Transact() EMV test.")
 		raw_input()
 		self.max.Transact(_EMV_INTERFACE, 0b1100100, self.EMV_SELECT_COMMAND, 0)
 		
@@ -272,7 +272,7 @@ class TransactTests(unittest.TestCase):
 		self.assertTrue(False)
 		
 	def testTransactTimeoutMS(self):
-		logging.info("Remove EMV card to being Transact() timeout test.")
+		logging.info("Remove EMV card to begin Transact() timeout test.")
 		raw_input()
 		timeout = 0b1010 # 10ms
 		t1 = time.time()
@@ -287,7 +287,7 @@ class TransactTests(unittest.TestCase):
 		self.assertTrue(actual_time < hi and actual_time > low)
 		
 	def testTransactTimeoutSec(self):
-		logging.info("Remove EMV card to being Transact() timeout test.")
+		logging.info("Remove EMV card to begin Transact() timeout test.")
 		raw_input()
 		timeout = 0b10000011 # 3ms
 		t1 = time.time()
@@ -488,91 +488,91 @@ class KeypadTests(unittest.TestCase):
 		self.timeout = 0b10000111
 		
 	def testKeyOne(self):
-		logging.info("Press the 1 key.")
+		logging.info("Press enter to wait for the 1 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 1)
 		
 	def testKeyTwo(self):
-		logging.info("Press the 2 key.")
+		logging.info("Press enter to wait for the 2 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 2)
 		
 	def testKeyThree(self):
-		logging.info("Press the 3 key.")
+		logging.info("Press enter to wait for the 3 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 3)
 	
 	def testKeyFour(self):
-		logging.info("Press the 4 key.")
+		logging.info("Press enter to wait for the 4 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 4)
 		
 	def testKeyFive(self):
-		logging.info("Press the 5 key.")
+		logging.info("Press enter to wait for the 5 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 5)
 		
 	def testKeySix(self):
-		logging.info("Press the 6 key.")
+		logging.info("Press enter to wait for the 6 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 6)
 		
 	def testKeySeven(self):
-		logging.info("Press the 7 key.")
+		logging.info("Press enter to wait for the 7 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 7)
 		
 	def testKeyEight(self):
-		logging.info("Press the 8 key.")
+		logging.info("Press enter to wait for the 8 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 8)
 		
 	def testKeyNine(self):
-		logging.info("Press the 9 key.")
+		logging.info("Press enter to wait for the 9 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 9)
 		
 	def testKeyZero(self):
-		logging.info("Press the 0 key.")
+		logging.info("Press enter to wait for the 0 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0)
 		
 	def testKeyEnter(self):
-		logging.info("Press the Enter key.")
+		logging.info("Press enter to wait for the Enter key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x0D)
 		
 	def testKeyBackspace(self):
-		logging.info("Press the Backspace key.")
+		logging.info("Press enter to wait for the Backspace key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x08)
 		
 	def testKeyCancel(self):
-		logging.info("Press the Cancel key.")
+		logging.info("Press enter to wait for the Cancel key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x18)
 		
 	def testKeyFunction1(self):
-		logging.info("Press the F1 key.")
+		logging.info("Press enter to wait for the F1 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x11)
 		
 	def testKeyFunction2(self):
-		logging.info("Press the F2 key.")
+		logging.info("Press enter to wait for the F2 key.")
 		raw_input()
 		r = self.max.Read(5, self.timeout, 1)
 		self.assertTrue(r, 0x12)
@@ -644,16 +644,16 @@ class Test_HTMLTestRunner(unittest.TestCase):
 		logging.basicConfig(format='\n%(message)s',level=logging.DEBUG)
 		self.suite = unittest.TestSuite()
 		self.suite.addTests([
-			unittest.defaultTestLoader.loadTestsFromTestCase(GetVersionTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(GetInterfaceMapTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(ResetTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(ReadTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(WriteTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(TransactTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(EnableTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(WaitForCardTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(LEDTests),
-			unittest.defaultTestLoader.loadTestsFromTestCase(KeypadTests)
+			#unittest.defaultTestLoader.loadTestsFromTestCase(GetVersionTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(GetInterfaceMapTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(ResetTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(ReadTests),
+			unittest.defaultTestLoader.loadTestsFromTestCase(WriteTests)
+			#unittest.defaultTestLoader.loadTestsFromTestCase(TransactTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(EnableTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(WaitForCardTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(LEDTests),
+			#unittest.defaultTestLoader.loadTestsFromTestCase(KeypadTests)
 			#unittest.defaultTestLoader.loadTestsFromTestCase(BugTests)
 			])
 			
