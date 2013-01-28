@@ -3,7 +3,7 @@ MagStripe.py
 example.py
 registers.py
 test.html
-
+blah.html
 
 *.py[cod]
 
@@ -40,3 +40,4 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
